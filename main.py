@@ -112,22 +112,20 @@ while not confirm:
     )
 
     if captcha_solution:
-        sleep(5)
         driver.execute_script(
             f'document.getElementsByName("g-recaptcha-response")[0].value = "{captcha_solution}";'
         )
-        sleep(5)
         driver.execute_script(
             f'document.getElementsByName("h-captcha-response")[0].value = "{captcha_solution}";'
         )
         print("Waiting for confirmation...")
-        sleep(5)
         driver.execute_script('document.getElementById("kc-form-login").submit();')
 
         confirmation = driver.find_elements(By.CLASS_NAME, "confirmation-title")
         if confirmation:
             confirm = True
-            print("Confirmed!")
+            print("Confirmed! Waiting 2 minutes for user...")
+            sleep(120)
             break
         else:
             print("Failed! Trying again...")
