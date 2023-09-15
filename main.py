@@ -50,7 +50,7 @@ def get_captcha_solution(api_key, site_key, url):
 
 
 chrome_options = webdriver.ChromeOptions()
-chrome_options.add_argument("--headless")
+# chrome_options.add_argument("--headless")
 
 driver = webdriver.Chrome(options=chrome_options)
 driver.maximize_window()
@@ -70,61 +70,68 @@ wait = WebDriverWait(driver, 30)
 button = wait.until(EC.presence_of_element_located(locator))
 element = wait.until(EC.element_to_be_clickable(locator))
 driver.execute_script("arguments[0].scrollIntoView();", button)
-sleep(5)
+sleep(3)
 print("Getting second page...")
 button.click()
 
-sleep(5)
+sleep(3)
 button = driver.find_elements(By.TAG_NAME, "button")[0]
 print("Getting last page...")
 button.click()
 
 
-sleep(5)
+sleep(3)
 button = driver.find_elements(By.ID, "popin_tc_privacy_button_2")[0]
 print("Accepting cookies...")
 button.click()
 
-sleep(5)
-form = driver.find_elements(By.ID, "kc-form-login")[0]
-action_url = form.get_attribute("action")
 
-input = driver.find_elements(By.ID, "username")[0]
-print("Entering phone number...")
-input.send_keys(phone)
+confirm = False
+while not confirm:
+    sleep(3)
+    form = driver.find_elements(By.ID, "kc-form-login")[0]
+    action_url = form.get_attribute("action")
 
+    input_ele = driver.find_elements(By.ID, "username")[0]
+    input_ele.clear()
+    print("Entering phone number...")
+    input_ele.send_keys(phone)
 
-sleep(5)
-submit_button = WebDriverWait(driver, 15).until(
-    EC.element_to_be_clickable(
-        (By.CSS_SELECTOR, 'input.h-captcha.homepage-auth-btn[type="submit"]')
+    submit_button = WebDriverWait(driver, 15).until(
+        EC.element_to_be_clickable(
+            (By.CSS_SELECTOR, 'input.h-captcha.homepage-auth-btn[type="submit"]')
+        )
     )
-)
 
-site_key = submit_button.get_attribute("data-sitekey")
-print("Solving captcha...")
-captcha_solution = get_captcha_solution(
-    os.environ["API_KEY_2CAPTCHA"], site_key, driver.current_url
-)
-
-if captcha_solution:
-    cookies_list = driver.get_cookies()
-    cookies_dict = {cookie["name"]: cookie["value"] for cookie in cookies_list}
-    print("Sending data...")
-    response = requests.post(
-        action_url,
-        data={
-            "form_country_indicative": 33,
-            "form_country_iso_code": "FR",
-            "username": phone,
-            "g-recaptcha-response": captcha_solution,
-            "h-recaptcha-response": captcha_solution,
-        },
+    site_key = submit_button.get_attribute("data-sitekey")
+    print("Solving captcha...")
+    captcha_solution = get_captcha_solution(
+        os.environ["API_KEY_2CAPTCHA"],
+        site_key,
+        "authent.lidentitenumerique.laposte.fr",
     )
-    if response.ok:
-        print(f"{phone} is Confirmed!")
 
-else:
-    print("Failed!")
+    if captcha_solution:
+        sleep(5)
+        driver.execute_script(
+            f'document.getElementsByName("g-recaptcha-response")[0].value = "{captcha_solution}";'
+        )
+        sleep(5)
+        driver.execute_script(
+            f'document.getElementsByName("h-captcha-response")[0].value = "{captcha_solution}";'
+        )
+        print("Waiting for confirmation...")
+        sleep(5)
+        driver.execute_script('document.getElementById("kc-form-login").submit();')
+
+        confirmation = driver.find_elements(By.CLASS_NAME, "confirmation-title")
+        if confirmation:
+            confirm = True
+            print("Confirmed!")
+            break
+        else:
+            print("Failed! Trying again...")
+    else:
+        print("Failed! Trying again...")
 
 driver.close()
